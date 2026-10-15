@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive trading risk calculator for drawdown, losing streaks and expectancy">
+<title>Trading Risk Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#121a2d;--line:#293550;--text:#edf2ff;--muted:#aab6d0;--accent:#8cb4ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172443 0,#0b1020 55%);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+main{width:min(1100px,92vw);margin:40px auto 64px}.eyebrow{color:var(--accent);font-size:.78rem;letter-spacing:.16em;font-weight:700;text-transform:uppercase}
+h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.45rem 0 .8rem}p{color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:18px;align-items:start}.panel{background:rgba(18,26,45,.94);border:1px solid var(--line);border-radius:18px;padding:22px}
+h2{font-size:1.15rem;margin:0 0 18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;color:var(--muted);font-size:.88rem;margin-bottom:6px}input{width:100%;background:#0a1121;color:var(--text);border:1px solid #344362;border-radius:10px;padding:12px;font:inherit}
+input:focus{outline:2px solid var(--accent)}.hint{font-size:.78rem;color:#8796b5;margin-top:8px}.results{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{background:#0b1325;border:1px solid var(--line);border-radius:13px;padding:15px;min-height:108px}.name{color:var(--muted);font-size:.82rem}.value{font-size:1.5rem;font-weight:750;margin-top:8px;overflow-wrap:anywhere}.detail{color:#91a0bf;font-size:.78rem;margin-top:4px}
+.wide{grid-column:1/-1}.notice{border-left:3px solid #ffd18a;padding:10px 12px;background:#2a2117;color:#ead8bb;border-radius:0 8px 8px 0;font-size:.86rem;margin-top:16px}
+.formula{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}code{color:#c4d6ff;background:#0a1121;padding:2px 5px;border-radius:5px}footer{margin-top:24px;font-size:.84rem;color:#8796b5}
+@media(max-width:760px){.layout{grid-template-columns:1fr}}@media(max-width:420px){.fields,.results{grid-template-columns:1fr}.wide{grid-column:auto}}
+</style></head><body><main>
+<header><div class="eyebrow">Trading Risk Lab · Educational calculator</div><h1>Know the risk before the trade.</h1><p>Explore how risk per trade, win rate, reward-to-risk, and drawdown limits interact. Calculations run in your browser; no data is uploaded.</p></header>
+<div class="layout"><section class="panel"><h2>Inputs</h2><div class="fields">
+<div><label for="balance">Starting account balance (USD)</label><input id="balance" type="number" min=".01" value="10000"></div>
+<div><label for="risk">Risk per trade (%)</label><input id="risk" type="number" min=".001" max="99.9" step=".05" value=".75"></div>
+<div><label for="dd">Maximum drawdown limit (%)</label><input id="dd" type="number" min=".001" max="99.9" value="10"></div>
+<div><label for="wr">Win rate (%)</label><input id="wr" type="number" min="0" max="100" value="60"></div>
+<div><label for="rr">Reward-to-risk (R)</label><input id="rr" type="number" min="0" step=".1" value="2"></div>
+<div><label for="trades">Trades in sample</label><input id="trades" type="number" min="1" max="100000" value="260"></div>
+<div><label for="streak">Losing streak to test</label><input id="streak" type="number" min="1" max="1000" value="6"></div>
+</div><div class="hint">Use the win-rate definition from your journal. Breakeven or risk-free trades may need separate treatment.</div><div class="notice">This is a mathematical model, not a forecast. It assumes independent trades, a stable win rate, and consistent percentage risk.</div></section>
+<section class="panel"><h2>Results</h2><div class="results" aria-live="polite">
+<div class="metric"><div class="name">Risk amount on first trade</div><div class="value" id="riskCash">—</div><div class="detail">Based on starting balance</div></div>
+<div class="metric"><div class="name">Drawdown after tested streak</div><div class="value" id="streakDD">—</div><div class="detail" id="streakCash">—</div></div>
+<div class="metric"><div class="name">Chance of streak in sample</div><div class="value" id="streakProb">—</div><div class="detail" id="streakProbDetail">—</div></div>
+<div class="metric"><div class="name">Losses to reach/exceed DD limit</div><div class="value" id="lossesLimit">—</div><div class="detail">Consecutive full-risk losses</div></div>
+<div class="metric"><div class="name">Expected value per trade</div><div class="value" id="expectancy">—</div><div class="detail">In R, before costs and slippage</div></div>
+<div class="metric"><div class="name">Return needed to recover</div><div class="value" id="recovery">—</div><div class="detail">From drawdown limit to starting equity</div></div>
+<div class="metric wide"><div class="name">Break-even win rate</div><div class="value" id="breakeven">—</div><div class="detail">Assumes full wins/losses and excludes costs and partial exits</div></div></div>
+<div class="formula"><h2>Model notes</h2><p><code>Streak drawdown = 1 − (1 − risk)^k</code></p><p><code>Expectancy (R) = win rate × average win (R) − loss rate</code></p><p><code>Recovery return = drawdown ÷ (1 − drawdown)</code></p><p>The sample-streak probability uses dynamic programming to estimate at least one run of the selected length, rather than the probability of one preselected sequence.</p></div></section></div>
+<footer>Educational open-source project. Not financial advice. Does not calculate instrument-specific lot size or guarantee trading outcomes.</footer></main>
+<script>
+(()=>{const $=id=>document.getElementById(id),pct=x=>Number.isFinite(x)?(100*x).toLocaleString(undefined,{maximumFractionDigits:4})+"%":"—",money=x=>Number.isFinite(x)?x.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:2}):"—",num=x=>Number.isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:4}):"—";
+function runProb(q,n,k){if(n<k||q===0)return 0;if(q===1)return 1;let s=Array(k).fill(0);s[0]=1;for(let i=0;i<n;i++){let t=Array(k).fill(0),surv=s.reduce((a,b)=>a+b,0);t[0]=surv*(1-q);for(let j=1;j<k;j++)t[j]=s[j-1]*q;s=t;}return Math.max(0,Math.min(1,1-s.reduce((a,b)=>a+b,0)));}
+function calc(){let b=+$("balance").value,r=+$("risk").value/100,d=+$("dd").value/100,w=+$("wr").value/100,R=+$("rr").value,n=Math.floor(+$("trades").value),k=Math.floor(+$("streak").value);
+if(!(b>0&&r>0&&r<1&&d>0&&d<1&&w>=0&&w<=1&&R>=0&&n>=1&&n<=100000&&k>=1&&k<=1000)){return}
+let dd=1-Math.pow(1-r,k),p=runProb(1-w,n,k),losses=Math.ceil(Math.log1p(-d)/Math.log1p(-r)-1e-12),ev=w*R-(1-w);
+$("riskCash").textContent=money(b*r);$("streakDD").textContent=pct(dd);$("streakCash").textContent=money(b*dd)+" loss from starting equity";$("streakProb").textContent=pct(p);$("streakProbDetail").textContent="At least one "+k+"-loss run in "+n+" trades";$("lossesLimit").textContent=losses;$("expectancy").textContent=(ev>=0?"+":"")+num(ev)+" R";$("recovery").textContent=pct(d/(1-d));$("breakeven").textContent=R===0?"Not defined for zero reward":pct(1/(R+1));}
+document.querySelectorAll("input").forEach(x=>x.addEventListener("input",calc));calc();})();
+</script></body></html>
